@@ -72,8 +72,9 @@ const chessBot = {
   ],
 
   //methods----------------------------------------------
+  //opening line when the page loads (only the wording changed)
   introduce() {
-    return "Hi! I'm " + this.name + ", here to answer your questions about chess openings!";
+    return "Hi! I'm " + this.name + ". Ask me about any of 106 chess openings, or tap a suggestion below.";
   },
 
   //normalize text
@@ -217,57 +218,157 @@ const chessBot = {
 //-----------------------------------------------------------------
 
 
-  //answering the user-------------------------------------------
-  ask(question) {
-    //catching empty input: blank, only spaces, or only punctuation
-    if (this.normalize(question) === "") {
-      this.lastOpening = null;
-      return "Try asking about a chess opening!";
+  //working out a reply-------------------------------------------
+  //the checks run in this order, and the order matters:
+  //  1. empty            - nothing to work with
+  //  2. variations       - "what are the variations?" (needs memory)
+  //  3. opening          - the main job
+  //  4. small talk       - only if it wasn't about an opening
+  //  5. unknown          - nothing matched
+  respond(question) {
+    //1. empty: a cancelled prompt() gives null, and normalize(null)
+    //would crash, so null is checked FIRST. || means "or", and if the
+    //left side is true javascript doesn't even look at the right side
+    if (question === null || this.normalize(question) === "") {
+      return {
+        kind: "empty",
+        text: "Try asking about a chess opening!"
+      };
     }
 
-    //stage 1: find the opening family
-    const family = this.findMatch(question);
-
-    //follow-up: the user wants a list of variations---------------
+    //2. a follow-up asking for a list of variations (same logic as
+    //your current ask, just returning an object)
     if (this.wantsVariations(question)) {
-      //use the family in this question, or else the one from before
-      let target = family;
+      //use the family named in this question, or else the one from before
+      let target = this.findMatch(question);
       if (target === null) {
         target = this.lastFamily;
       }
 
-      //no family in this question and none from before
       if (target === null) {
-        this.lastOpening = null;
-        return "Which opening? Ask me about one first, like the Sicilian, and then ask about its variations.";
+        return {
+          kind: "unknown",
+          text: "Which opening? Ask me about one first, like the Sicilian, and then ask about its variations."
+        };
       }
 
-      this.lastFamily = target;  //this family is now the one being discussed
-      this.lastOpening = target; //so the lichess link shows the family's position
-      return this.listVariations(target);
+      this.lastFamily = target; //this family is now the one being discussed
+      return {
+        kind: "variations",
+        text: this.listVariations(target),
+        title: target.name,
+        opening: target,
+        family: target
+      };
     }
 
-    //no family scored above 0, so give a fallback instead of crashing
-    if (family === null) {
-      this.lastOpening = null;
-      return "Hmm, I don't know that one.";
-    }
-    this.lastFamily = family; //remember for follow up questions
+    //3. an opening (lookup is in piece 1)
+    const found = this.lookup(question);
 
-    //stage 2: look for a specific variation inside that family
-    const variation = this.findVariation(family, question);
-
-    //deciding what to talk about: the family, or a specific variation
-    let opening = family;          //start by assuming the family
-    let title = family.name;
-
-    if (variation !== null) {      //a variation matched, so use it instead
-      opening = variation;
-      title = family.name + ": " + variation.name;
+    if (found !== null) {
+      this.lastFamily = found.family; //remember it for follow-up questions
+      return {
+        kind: "opening",
+        text: found.title + " (" + found.opening.eco + ")\n" +
+              found.opening.moves + "\n\n" + found.opening.idea,
+        title: found.title,
+        opening: found.opening,
+        family: found.family
+      };
     }
 
-    this.lastOpening = opening; //memory
-    return title + " (" + opening.eco + ")" + "\n" + opening.moves + "\n\n" + opening.idea;
+    //4. small talk. this comes AFTER openings on purpose:
+    //"hi morphy, what's the sicilian?" contains "hi", but it's really
+    //an opening question, so the opening check gets the first chance
+    const chat = this.findSmallTalk(question);
+
+    if (chat !== null) {
+      //pickRandom gives back an array, so [0] takes the one reply out of it
+      const reply = this.pickRandom(chat.replies, 1)[0];
+      return {
+        kind: "smalltalk",
+        text: reply.replace("{name}", this.name)
+      };
+    }
+
+    //5. nothing matched. the page adds suggestion chips under this,
+    //so the user isn't left at a dead end
+    return {
+      kind: "unknown",
+      text: "Hmm, I don't know that one. I only know chess openings. Try one of these:"
+    };
+  },
+
+
+  //the console version: just the text of the reply-----------------
+  //so chessBot.ask("explain the najdorf") still works exactly as before
+  ask(question) {
+    return this.respond(question).text;
+  },
+
+
+  //suggestion chips: what could the user ask next?----------------
+  //reply: an object from respond (or { kind: "start" } on page load)
+  //returns an array of { label, question } objects:
+  //  label    - the short text shown on the chip
+  //  question - what gets asked when the chip is clicked
+  //the bot only DECIDES the suggestions. drawing them is the page's job
+  suggestions(reply) {
+    const chips = [];
+
+    //after an answer about an opening, or a list of its variations
+    if (reply.kind === "opening" || reply.kind === "variations") {
+      const family = reply.family;
+
+      //answering about a variation: offer the family overview
+      if (reply.opening !== family) {
+        chips.push({ label: "Back to the " + family.name, question: "what is the " + family.name });
+      }
+
+      //offer the variations list, unless that's what we just showed
+      if (reply.kind === "opening" && family.variations.length > 0) {
+        chips.push({ label: "Its variations", question: "what are the variations of the " + family.name });
+      }
+
+      //a few variations to try, leaving out the one we're already on
+      const others = [];
+      for (let variation of family.variations) {
+        if (variation !== reply.opening) {
+          others.push(variation);
+        }
+      }
+
+      for (let variation of this.pickRandom(others, 2)) {
+        //family name + variation name, so the question finds the right
+        //family first ("French Defense Exchange Variation", not just
+        //"Exchange Variation", which exists in five families)
+        chips.push({ label: variation.name, question: family.name + " " + variation.name });
+      }
+
+      //a family with no variations (like the london): suggest elsewhere
+      if (family.variations.length === 0) {
+        for (let other of this.pickRandom(this.knowledge, 2)) {
+          if (other !== family) {
+            chips.push({ label: other.name, question: "what is the " + other.name });
+          }
+        }
+      }
+
+      return chips;
+    }
+
+    //everything else (page load, small talk, unknown, empty):
+    //a few popular openings to get started. the first 12 families in
+    //knowledge.js are the most popular ones
+    if (reply.kind === "start") {
+      chips.push({ label: "What can you do?", question: "what can you do" });
+    }
+
+    for (let family of this.pickRandom(this.knowledge.slice(0, 12), 3)) {
+      chips.push({ label: family.name, question: "what is the " + family.name });
+    }
+
+    return chips;
   },
   //building a lichess analysis board link from a move string
   lichessLink(moves) {
