@@ -15,6 +15,6 @@ Morphy answers questions about 106 chess openings. Ask about one ("explain the N
 
 I used AI throughout. For Assignment 4, Claude tutored me and I wrote most of the code myself.
 
-For this version, Claude wrote the new code as commented pieces with step-by-step task sheets. A second AI assistant (CODY, running on my computer) pasted each piece into the project, ran the console tests, and made the git commits. I followed along and asked it to walk me through each piece: how `findBest`, `lookup`, `respond` and `suggestions` work, and why the follow-up memory still works. Then I checked the page in the browser myself.
+For this version, Claude wrote the new code as commented pieces with step-by-step task sheets. A second AI assistant (CODY, running on my computer) pasted each piece into the project, ran the console tests, and made the git commits. I followed along and asked it to walk me through each piece: how `findBest`, `lookup`, `respond` and `suggestions` work, and why the follow-up memory still works. 
 
 Opening moves come from Lichess's public dataset. The opening descriptions were drafted by Claude.
