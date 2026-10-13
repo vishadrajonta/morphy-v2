@@ -509,3 +509,91 @@ document.addEventListener("keydown", function (event) {
   }
 });
 //-----------------------------------------------------------------
+
+
+//true while morphy is "typing", so nobody can send twice at once
+let isThinking = false;
+
+
+//asking morphy a question-------------------------------------------
+function askQuestion(text) {
+  if (isThinking) {
+    return; //still answering the last one
+  }
+
+  //validation first: morphy never sees a bad question (piece 5)
+  const problem = validateQuestion(text);
+  if (problem !== "") {
+    showError(questionInput, problem);
+    return;
+  }
+  clearError(questionInput);
+
+  //the question is fine: show it, and clear the way for the answer
+  removeChips();
+  addUserMessage(text.trim());
+  questionInput.value = "";
+
+  //work out the reply now, but show the typing dots for a moment first
+  const reply = chessBot.respond(text);
+  const typing = showTyping();
+
+  isThinking = true;
+  sendButton.disabled = true;
+
+  //setTimeout(function, milliseconds) runs the function ONCE, after the
+  //wait. everything else on the page keeps working in the meantime
+  setTimeout(function () {
+    typing.remove();                           //dots gone
+    addBotReply(reply);                        //card or bubble (piece 6)
+    addChips(chessBot.suggestions(reply));     //what to ask next
+
+    isThinking = false;
+    sendButton.disabled = false;
+    questionInput.focus();
+  }, thinkingTime(reply));
+}
+
+
+//the chat form--------------------------------------------------------
+chatForm.addEventListener("submit", function (event) {
+  event.preventDefault(); //stop the page from reloading
+  askQuestion(questionInput.value);
+});
+
+//clearing the error as soon as they start typing again.
+//"input" fires on every change to the box: each key, a paste, a delete
+questionInput.addEventListener("input", function () {
+  clearError(questionInput);
+});
+
+
+//clicks inside the chat (one listener for the whole list)------------
+//the same event delegation as the wishlist (piece 8): chips and save
+//buttons are created all the time, so one listener on the <ul> handles them
+messageList.addEventListener("click", function (event) {
+  const chip = event.target.closest(".chip");
+  if (chip !== null) {
+    askQuestion(chip.dataset.question);
+    return;
+  }
+
+  const save = event.target.closest(".save-button");
+  if (save !== null) {
+    addToWishlist(save.dataset.title, save.dataset.moves);
+  }
+});
+
+
+//starting up--------------------------------------------------------
+//draw the saved wishlist, then morphy says hello with starter chips
+renderWishlist();
+addBotText(chessBot.introduce());
+addChips(chessBot.suggestions({ kind: "start" }));
+questionInput.focus();
+//-----------------------------------------------------------------
+//
+//console version, as described in the assignment (still works, because
+//ask still returns a plain string):
+//let question = prompt("Ask Morphy about an opening");
+//console.log(chessBot.ask(question));
