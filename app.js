@@ -272,3 +272,240 @@ function thinkingTime(reply) {
 //
 //milliseconds: 1000 of them make a second. setTimeout (piece 9) and
 //most javascript timing works in milliseconds.
+
+
+//saving and loading-------------------------------------------------
+//localStorage is a small storage area the browser keeps for each
+//website. it survives refreshes and closing the tab. it can only hold
+//TEXT, so the array is turned into text to save it, and back to load it:
+//  JSON.stringify([{ title: "x" }])   gives   '[{"title":"x"}]'
+//  JSON.parse('[{"title":"x"}]')      gives   [{ title: "x" }]
+const storageKey = "morphy-wishlist";
+
+function loadWishlist() {
+  //try/catch: if anything inside "try" throws an error (private
+  //browsing can block storage, or the saved text could be broken),
+  //javascript jumps to "catch" instead of crashing the whole page
+  try {
+    const saved = localStorage.getItem(storageKey); //null if nothing saved yet
+    if (saved === null) {
+      return [];
+    }
+    return JSON.parse(saved);
+  } catch (error) {
+    return []; //start with an empty list rather than breaking
+  }
+}
+
+function saveWishlist() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(wishlist));
+  } catch (error) {
+    //storage blocked: the list still works until the page is refreshed
+  }
+}
+
+//the wishlist itself, loaded once when the page starts.
+//let, not const, because removing an item replaces the whole array
+let wishlist = loadWishlist();
+
+
+//checking whether an opening is already saved-----------------------
+function isSaved(title) {
+  for (let item of wishlist) {
+    if (item.title === title) {
+      return true; //found it, no need to keep looking
+    }
+  }
+  return false;
+}
+
+
+//adding and removing------------------------------------------------
+function addToWishlist(title, moves) {
+  if (isSaved(title)) {
+    return; //already there, nothing to do
+  }
+
+  wishlist.push({ title: title, moves: moves });
+  saveWishlist();
+  renderWishlist(title); //pass the title so the new item gets highlighted
+
+  //a little "bump" animation on the count, same trick as the error shake
+  wishlistCount.classList.add("bump");
+  wishlistCount.addEventListener("animationend", function () {
+    wishlistCount.classList.remove("bump");
+  }, { once: true });
+}
+
+function removeFromWishlist(title) {
+  //build a new array of everything EXCEPT the one being removed
+  const kept = [];
+  for (let item of wishlist) {
+    if (item.title !== title) {
+      kept.push(item);
+    }
+  }
+
+  wishlist = kept;
+  saveWishlist();
+  renderWishlist();
+}
+
+
+//drawing the panel from the array-----------------------------------
+//newTitle is optional: if given, that item gets a highlight class
+function renderWishlist(newTitle) {
+  wishlistItems.textContent = ""; //empty the <ul>: clearing its text
+                                  //removes every element inside it too
+
+  //nothing saved: show a hint instead of an empty box
+  if (wishlist.length === 0) {
+    wishlistItems.appendChild(makeElement("li", "wishlist-empty",
+      "Nothing saved yet. Tap \"Save to wishlist\" on any answer, or add one above."));
+  }
+
+  for (let item of wishlist) {
+    const row = makeElement("li", "wishlist-item", "");
+    if (item.title === newTitle) {
+      row.classList.add("just-added");
+    }
+
+    //the name is a button: clicking it asks morphy about the opening again
+    const name = makeElement("button", "wishlist-ask", item.title);
+    name.type = "button";
+    name.dataset.title = item.title;
+    row.appendChild(name);
+
+    const link = makeElement("a", "wishlist-board", "Board ↗");
+    link.href = chessBot.lichessLink(item.moves);
+    link.target = "_blank";
+    link.rel = "noopener";
+    row.appendChild(link);
+
+    const remove = makeElement("button", "wishlist-remove", "×");
+    remove.type = "button";
+    remove.dataset.title = item.title;
+    remove.setAttribute("aria-label", "Remove " + item.title); //"×" alone means nothing to a screen reader
+    row.appendChild(remove);
+
+    wishlistItems.appendChild(row);
+  }
+
+  wishlistCount.textContent = wishlist.length;
+  updateSaveButtons();
+}
+
+
+//keeping the chat's save buttons honest-----------------------------
+//if you remove the najdorf from the panel, the najdorf card in the chat
+//should go back to "Save to wishlist". so every change rechecks every button
+function updateSaveButtons() {
+  for (let button of document.querySelectorAll(".save-button")) {
+    if (isSaved(button.dataset.title)) {
+      button.textContent = "★ Saved";
+      button.disabled = true;
+    } else {
+      button.textContent = "☆ Save to wishlist";
+      button.disabled = false;
+    }
+  }
+}
+
+
+//the wishlist's own form, with its own validation---------------------
+wishlistForm.addEventListener("submit", function (event) {
+  event.preventDefault(); //stop the page from reloading
+
+  const text = wishlistInput.value;
+
+  //working out what's wrong, if anything. each check only runs if the
+  //ones before it passed (problem is still "")
+  let problem = "";
+  let found = null;
+
+  if (text.trim() === "") {
+    problem = "Type an opening name first.";
+  } else {
+    problem = validateQuestion(text); //the same rules as the chat (piece 5)
+  }
+
+  if (problem === "") {
+    found = chessBot.lookup(text); //"najdorf" -> the full Najdorf object
+
+    if (found === null) {
+      problem = "I don't know an opening called \"" + text.trim() + "\". Try a name like \"Caro-Kann\" or \"Najdorf\".";
+    } else if (isSaved(found.title)) {
+      problem = found.title + " is already on your list.";
+    }
+  }
+
+  if (problem !== "") {
+    showError(wishlistInput, problem);
+    return; //stop here: nothing gets added
+  }
+
+  clearError(wishlistInput);
+  addToWishlist(found.title, found.opening.moves);
+  wishlistInput.value = "";
+});
+//"else if" chains checks: only one of them can run. if found is null
+//we never ask whether it's saved, which would crash on null.title
+
+
+//clearing the wishlist error as soon as they start fixing it
+wishlistInput.addEventListener("input", function () {
+  clearError(wishlistInput);
+});
+
+
+//clicks inside the list (one listener for every row)----------------
+//rows are created and destroyed all the time, so instead of adding a
+//listener to each button, ONE listener sits on the whole <ul>. a click
+//on any button inside it "bubbles up" to the <ul>, and event.target
+//says what was actually clicked. this is called event delegation:
+//the list click example in your class 5 notes.
+wishlistItems.addEventListener("click", function (event) {
+  //closest(".x") walks up from the clicked element to find the
+  //nearest element with that class (itself counts), or gives null.
+  //it's needed because the click might land on text INSIDE a button
+  const remove = event.target.closest(".wishlist-remove");
+  if (remove !== null) {
+    removeFromWishlist(remove.dataset.title);
+    return;
+  }
+
+  const ask = event.target.closest(".wishlist-ask");
+  if (ask !== null) {
+    setWishlistOpen(false); //on phones, close the panel to show the answer
+    askQuestion(ask.dataset.title); //piece 9
+  }
+});
+
+
+//opening and closing the panel (on phones)------------------------
+//on a wide screen the css always shows the panel beside the chat, and
+//hides these buttons. on a phone it slides in over the chat
+function setWishlistOpen(isOpen) {
+  //toggle with a second argument: add the class if true, remove if false
+  wishlistPanel.classList.toggle("open", isOpen);
+  wishlistToggle.setAttribute("aria-expanded", isOpen);
+}
+
+wishlistToggle.addEventListener("click", function () {
+  const isOpen = wishlistPanel.classList.contains("open");
+  setWishlistOpen(!isOpen); //flip it
+});
+
+wishlistClose.addEventListener("click", function () {
+  setWishlistOpen(false);
+});
+
+//the escape key closes it too. "keydown" fires for every key press,
+//and event.key says which key it was
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape") {
+    setWishlistOpen(false);
+  }
+});
+//-----------------------------------------------------------------
