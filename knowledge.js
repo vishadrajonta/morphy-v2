@@ -256,7 +256,7 @@ const openingKnowledge = [
   },
   {
     name: "Caro-Kann Defense",
-    keywords: ["carokann", "caro", "kann", "panov"],
+    keywords: ["carokann", "caro", "kann", "panov", "two knights attack"],
     eco: "B10",
     moves: "1. e4 c6",
     idea: "Black prepares ...d5 with ...c6, keeping the light-squared bishop free to come out before ...e6. It's one of the most solid defenses: Black accepts a bit less space in exchange for a healthy pawn structure and easy development.",
