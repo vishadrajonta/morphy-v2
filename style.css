@@ -1,3 +1,9 @@
+/* =================================================================
+   style.css for Morphy v2. this REPLACES your whole style.css.
+   sections marked NEW are new; CHANGED ones were edited;
+   everything else is the same as before.
+   ================================================================= */
+
 /* Colours borrowed from a classic green-and-buff tournament board */
 :root {
   --light-square: #eeeed2;
@@ -5,6 +11,7 @@
   --ink: #1f2a1a;
   --paper: #fbfbf6;
   --muted: #5d6b55;
+  --error: #b3261e;   /* NEW: for validation messages */
 }
 
 * {
@@ -20,13 +27,33 @@ body {
   line-height: 1.5;
 }
 
+/* ---------- Layout (CHANGED) ---------- */
+
+/* the chat and the wishlist sit in a grid.
+   on phones it's one column, and the wishlist slides in over the chat.
+   100dvh = the full height of the screen; "dvh" also adjusts when a
+   phone's address bar appears and disappears, which plain vh doesn't */
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 40rem);
+  justify-content: center;
+  gap: 2rem;
+  height: 100dvh;
+  padding: 0 1rem;
+}
+
+/* wide screens: a second column for the wishlist */
+@media (min-width: 960px) {
+  .app {
+    grid-template-columns: minmax(0, 40rem) 18rem;
+  }
+}
+
 .chat {
-  max-width: 40rem;
-  height: 100vh;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 0 1rem;
+  min-height: 0;          /* lets the message list scroll instead of growing */
+  padding-bottom: 1rem;
 }
 
 /* ---------- Header ---------- */
@@ -41,6 +68,14 @@ body {
   background-size: 3rem 3rem;
 }
 
+/* NEW: the title and the wishlist button on one line */
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .chat-header h1 {
   margin: 1rem 0 0.25rem;
   font-size: 1.75rem;
@@ -50,8 +85,6 @@ body {
   margin: 0 0 1rem;
   color: var(--muted);
 }
-
-/* ---------- Messages ---------- */
 
 /* ---------- Messages ---------- */
 
@@ -70,10 +103,11 @@ body {
 
 /* each individual bubble */
 .message {
-  max-width: 80%;
+  max-width: 85%;
   padding: 0.6rem 0.9rem;
   border-radius: 0.75rem;
   white-space: pre-line; /* shows line breaks inside answers */
+  animation: rise 0.25s ease-out; /* NEW: slides in when added */
 }
 
 .message.bot {
@@ -87,12 +121,142 @@ body {
   color: white;
 }
 
-/* the lichess link under an answer */
-.message a {
-  display: block;       /* puts the link on its own line */
-  margin-top: 0.5rem;
+/* NEW: messages and chips rise gently into place */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Answer cards (NEW) ---------- */
+
+.card {
+  max-width: 92%;
+  padding: 0.9rem 1rem;
+}
+
+.card p {
+  margin: 0;
+}
+
+.card-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* the ECO code badge */
+.eco {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0 0.45rem;
+  border-radius: 0.3rem;
+  background: var(--dark-square);
+  color: white;
+  font-size: 0.8rem;
+  vertical-align: middle;
+}
+
+.card-moves {
+  margin: 0.5rem 0 !important;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.7);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.lichess-link {
   color: var(--ink);
   font-weight: 700;
+}
+
+.save-button {
+  padding: 0.35rem 0.8rem;
+  font: inherit;
+  font-size: 0.9rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.save-button:hover {
+  background: var(--paper);
+}
+
+/* already saved: the button stays visible but quieter */
+.save-button:disabled {
+  border-color: var(--dark-square);
+  color: var(--dark-square);
+  cursor: default;
+}
+
+/* ---------- Suggestion chips (NEW) ---------- */
+
+.chips {
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  animation: rise 0.25s ease-out;
+}
+
+.chip {
+  padding: 0.35rem 0.85rem;
+  font: inherit;
+  font-size: 0.9rem;
+  border: 1.5px solid var(--dark-square);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.chip:hover {
+  background: var(--light-square);
+  transform: translateY(-1px);
+}
+
+.chip:focus-visible,
+.save-button:focus-visible,
+.wishlist-toggle:focus-visible,
+.wishlist-item button:focus-visible {
+  outline: 3px solid var(--dark-square);
+  outline-offset: 2px;
+}
+
+/* ---------- Typing dots (NEW) ---------- */
+
+.typing {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.85rem 1rem;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: bounce 1s infinite;
+}
+
+/* each dot starts a little later than the one before */
+.dot:nth-child(2) { animation-delay: 0.15s; }
+.dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: none; opacity: 0.5; }
+  30%           { transform: translateY(-5px); opacity: 1; }
 }
 
 /* ---------- Input ---------- */
@@ -100,11 +264,13 @@ body {
 .chat-input {
   display: flex;
   gap: 0.5rem;
-  padding: 1rem 0 1.5rem;
+  padding: 1rem 0 0.5rem;   /* CHANGED: less at the bottom, room for errors */
 }
 
-.chat-input input {
+.chat-input input,
+.wishlist-form input {
   flex: 1;
+  min-width: 0;
   padding: 0.7rem 0.9rem;
   font: inherit;
   border: 2px solid var(--light-square);
@@ -112,12 +278,14 @@ body {
   background: white;
 }
 
-.chat-input input:focus {
+.chat-input input:focus,
+.wishlist-form input:focus {
   outline: none;
   border-color: var(--dark-square);
 }
 
-.chat-input button {
+.chat-input button,
+.wishlist-form button {
   padding: 0.7rem 1.2rem;
   font: inherit;
   font-weight: 700;
@@ -128,10 +296,220 @@ body {
   cursor: pointer;
 }
 
-.chat-input button:focus-visible {
+.chat-input button:focus-visible,
+.wishlist-form button:focus-visible {
   outline: 3px solid var(--dark-square);
   outline-offset: 2px;
 }
+
+/* NEW: send button while morphy is "typing" */
+.chat-input button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* ---------- Validation (NEW) ---------- */
+
+/* the error message created by showError */
+.error {
+  margin: 0 0 0.5rem;
+  color: var(--error);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* aria-invalid is set by showError, so the css can select it */
+input[aria-invalid="true"] {
+  border-color: var(--error) !important;
+}
+
+.shake {
+  animation: shake 0.35s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: none; }
+  25%      { transform: translateX(-6px); }
+  50%      { transform: translateX(6px); }
+  75%      { transform: translateX(-3px); }
+}
+
+/* ---------- Wishlist (NEW) ---------- */
+
+/* phones: a panel that slides in from the right, hidden until .open.
+   visibility: hidden also stops people tabbing into it while it's away */
+.wishlist {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  width: min(20rem, 88vw);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  background: var(--paper);
+  box-shadow: -8px 0 24px rgba(31, 42, 26, 0.15);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0.25s;
+}
+
+.wishlist.open {
+  transform: none;
+  visibility: visible;
+}
+
+/* wide screens: always visible, as the grid's second column */
+@media (min-width: 960px) {
+  .wishlist {
+    position: static;
+    width: auto;
+    padding: 2.75rem 0 1rem;   /* lines up with the chat below the board strip */
+    box-shadow: none;
+    transform: none;
+    visibility: visible;
+    min-height: 0;
+  }
+
+  .wishlist-toggle,
+  .wishlist-close {
+    display: none;
+  }
+}
+
+.wishlist-toggle {
+  padding: 0.35rem 0.8rem;
+  font: inherit;
+  font-weight: 700;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.wishlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wishlist-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.wishlist-close {
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* the number badge next to "Wishlist" */
+.count {
+  display: inline-block;
+  min-width: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--dark-square);
+  color: white;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.bump {
+  animation: bump 0.3s;
+}
+
+@keyframes bump {
+  50% { transform: scale(1.35); }
+}
+
+.wishlist-hint {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--muted);
+}
+
+.wishlist-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.wishlist-items {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wishlist-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--light-square);
+}
+
+/* fades from highlighted to normal when an item is added */
+.just-added {
+  animation: highlight 1.5s ease-out;
+}
+
+@keyframes highlight {
+  from { background: var(--light-square); }
+  to   { background: transparent; }
+}
+
+/* the opening name: a button that looks like text */
+.wishlist-ask {
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.wishlist-ask:hover {
+  text-decoration: underline;
+}
+
+.wishlist-board {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.wishlist-remove {
+  width: 1.6rem;
+  height: 1.6rem;
+  font: inherit;
+  line-height: 1;
+  border: none;
+  border-radius: 50%;
+  background: var(--light-square);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.wishlist-remove:hover {
+  background: var(--error);
+  color: white;
+}
+
+.wishlist-empty {
+  padding: 0.75rem 0;
+  color: var(--muted);
+}
+
+/* ---------- Accessibility ---------- */
 
 /* Hides the label visually but keeps it for screen readers */
 .visually-hidden {
@@ -141,4 +519,15 @@ body {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* NEW: some people turn off motion in their system settings because
+   animation makes them feel unwell. this respects that setting */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

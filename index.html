@@ -8,33 +8,71 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+
+  <!-- three scripts, in this order: the data, the bot, then the page code.
+       defer runs them in order once the page has loaded -->
   <script src="knowledge.js" defer></script>
   <script src="chessbot.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
 <body>
-  <main class="chat">
+  <!-- NEW: .app holds the chat and the wishlist side by side -->
+  <div class="app">
 
-    <header class="chat-header">
-      <div class="board-strip" aria-hidden="true"></div>
-      <h1>Morphy</h1>
-      <p>Ask Morphy about chess openings!</p>
-    </header>
+    <main class="chat">
 
-    <!-- Messages appear here. JavaScript will add to this list later. -->
-    <ul id="messages" class="messages" aria-live="polite">
-    </ul>
+      <header class="chat-header">
+        <div class="board-strip" aria-hidden="true"></div>
+        <div class="title-row">
+          <h1>Morphy</h1>
+          <!-- NEW: opens the wishlist on phones (hidden on wide screens).
+               aria-expanded tells screen readers whether it's open -->
+          <button id="wishlist-toggle" class="wishlist-toggle" type="button"
+                  aria-expanded="false" aria-controls="wishlist">
+            ★ Wishlist
+          </button>
+        </div>
+        <p>Ask about 106 chess openings, from the Sicilian to the London.</p>
+      </header>
 
-    <form id="chat-form" class="chat-input">
-      <label for="question" class="visually-hidden">Your question</label>
-      <input
-        id="question"
-        type="text"
-        placeholder="Ask a chess question"
-        autocomplete="off"
-      >
-      <button type="submit">Send</button>
-    </form>
+      <!-- messages, cards and chips are all added here by app.js -->
+      <ul id="messages" class="messages" aria-live="polite"></ul>
 
-  </main>
+      <!-- no "required" or "maxlength": app.js validates and shows its own errors -->
+      <form id="chat-form" class="chat-input">
+        <label for="question" class="visually-hidden">Your question</label>
+        <input
+          id="question"
+          type="text"
+          placeholder="Ask about an opening, like the Najdorf"
+          autocomplete="off"
+        >
+        <button id="send-button" type="submit">Send</button>
+      </form>
+
+    </main>
+
+    <!-- NEW: the wishlist panel -->
+    <aside id="wishlist" class="wishlist" aria-labelledby="wishlist-heading">
+      <div class="wishlist-header">
+        <h2 id="wishlist-heading">
+          Wishlist <span id="wishlist-count" class="count">0</span>
+        </h2>
+        <button id="wishlist-close" class="wishlist-close" type="button"
+                aria-label="Close wishlist">×</button>
+      </div>
+      <p class="wishlist-hint">Openings you want to learn.</p>
+
+      <form id="wishlist-form" class="wishlist-form">
+        <label for="wishlist-input" class="visually-hidden">Opening to add</label>
+        <input id="wishlist-input" type="text" placeholder="Add an opening" autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+
+      <!-- filled in by renderWishlist (piece 8) -->
+      <ul id="wishlist-items" class="wishlist-items"></ul>
+    </aside>
+
+  </div>
 </body>
 </html>
