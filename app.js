@@ -116,3 +116,159 @@ function clearError(input) {
 //own little popup instead of our message, and the assignment wants
 //the errors in the page. the same goes for maxlength: it would stop
 //typing at 200, so rule 4 could never show its friendly message.
+
+
+//a small helper for making elements----------------------------------
+//making a card means doing "createElement, set the class, set the text"
+//about ten times, so that pattern gets its own function.
+//makeElement("p", "card-idea", "hello") gives <p class="card-idea">hello</p>
+function makeElement(tag, className, text) {
+  const element = document.createElement(tag);
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+//always textContent, never innerHTML. innerHTML would treat the text
+//as html, so if someone typed <img src=x onerror=...> into the chat,
+//the browser would RUN it. textContent always treats it as plain text.
+
+
+//the user's bubble--------------------------------------------------
+function addUserMessage(text) {
+  messageList.appendChild(makeElement("li", "message user", text));
+  scrollToBottom();
+}
+
+
+//a plain text bubble from morphy--------------------------------------
+function addBotText(text) {
+  messageList.appendChild(makeElement("li", "message bot", text));
+  scrollToBottom();
+}
+
+
+//an answer card for an opening--------------------------------------
+//reply: an "opening" reply object from chessBot.respond (piece 3)
+function addAnswerCard(reply) {
+  const opening = reply.opening; //the card we're talking about
+
+  const card = makeElement("li", "message bot card", "");
+
+  //title line, with the ECO code as a little badge inside it
+  const title = makeElement("p", "card-title", reply.title + " ");
+  title.appendChild(makeElement("span", "eco", opening.eco));
+  card.appendChild(title);
+
+  //the moves, then the idea
+  card.appendChild(makeElement("p", "card-moves", opening.moves));
+  card.appendChild(makeElement("p", "card-idea", opening.idea));
+
+  //a row for the two actions
+  const actions = makeElement("div", "card-actions", "");
+
+  //the lichess link: same as before, now a proper part of the card
+  const link = makeElement("a", "lichess-link", "Open on Lichess ↗");
+  link.href = chessBot.lichessLink(opening.moves);
+  link.target = "_blank";  //new tab, so the chat isn't lost
+  link.rel = "noopener";   //safety habit for new-tab links
+  actions.appendChild(link);
+
+  //the save button. the title and moves are stored ON the button as
+  //data attributes, so when it's clicked (piece 9) we know what to save
+  const save = makeElement("button", "save-button", "");
+  save.type = "button"; //a plain button, not a form submit
+  save.dataset.title = reply.title;   //becomes data-title="..." in the html
+  save.dataset.moves = opening.moves; //becomes data-moves="..."
+  actions.appendChild(save);
+
+  card.appendChild(actions);
+  messageList.appendChild(card);
+
+  updateSaveButtons(); //sets this button's text: saved or not (piece 8)
+  scrollToBottom();
+}
+//dataset: any attribute written data-something="..." in html shows up
+//in javascript as element.dataset.something. it's a way to attach your
+//own information to an element. here: "this button saves THIS opening"
+
+
+//picking how to show a reply----------------------------------------
+//openings get a card, everything else gets a plain bubble
+function addBotReply(reply) {
+  if (reply.kind === "opening") {
+    addAnswerCard(reply);
+  } else {
+    addBotText(reply.text);
+  }
+}
+
+
+//suggestion chips under morphy's reply------------------------------
+//chips: an array of { label, question } from chessBot.suggestions
+//each chip is a <button> whose question is stored in data-question
+function addChips(chips) {
+  if (chips.length === 0) {
+    return; //nothing to suggest
+  }
+
+  const row = makeElement("li", "chips", "");
+  row.setAttribute("aria-label", "Suggestions");
+
+  for (let chip of chips) {
+    const button = makeElement("button", "chip", chip.label);
+    button.type = "button";
+    button.dataset.question = chip.question;
+    row.appendChild(button);
+  }
+
+  messageList.appendChild(row);
+  scrollToBottom();
+}
+
+
+//removing old chips before a new question---------------------------
+//so only the latest suggestions are ever on screen.
+//querySelectorAll finds EVERY element matching a css selector
+//and gives back a list we can loop through
+function removeChips() {
+  for (let row of document.querySelectorAll(".chips")) {
+    row.remove();
+  }
+}
+//-----------------------------------------------------------------
+//
+//notice addAnswerCard calls updateSaveButtons, which lives in piece 8,
+//further down the file. that's fine: functions written with the
+//"function" keyword are available to the whole file from the start
+//(this is called hoisting). const variables are NOT, which is why the
+//getElementById lines in piece 4 have to come first.
+
+
+//showing the dots---------------------------------------------------
+//returns the element, so whoever called this can remove it later
+function showTyping() {
+  const bubble = makeElement("li", "message bot typing", "");
+  bubble.setAttribute("aria-label", chessBot.name + " is typing");
+
+  //three empty spans: the css turns each one into a bouncing dot
+  for (let i = 0; i < 3; i++) {
+    bubble.appendChild(makeElement("span", "dot", ""));
+  }
+
+  messageList.appendChild(bubble);
+  scrollToBottom();
+  return bubble;
+}
+
+
+//how long morphy "thinks" before answering----------------------------
+//longer answers take a little longer, like a person typing more,
+//but never under 0.4 seconds or over 1.2 seconds
+function thinkingTime(reply) {
+  const time = 400 + reply.text.length * 2; //in milliseconds
+  return Math.min(time, 1200);              //Math.min picks the smaller number
+}
+//-----------------------------------------------------------------
+//
+//milliseconds: 1000 of them make a second. setTimeout (piece 9) and
+//most javascript timing works in milliseconds.
