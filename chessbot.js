@@ -4,8 +4,6 @@ const chessBot = {
   name: "Morphy",
   //knowledge base lives in knowledge.js and is attached here as a property
   knowledge: openingKnowledge,
-  //the opening from the most recent answer (null if there isn't one)
-  lastOpening: null,
   //the family from the most recent answer, used for follow-up questions
   lastFamily: null,
 
@@ -400,54 +398,3 @@ const chessBot = {
     },
 };
 //chessBot--------------------------------------------------
-
-//connecting to the html----------------------------------------
-//grabbing the three elements we need from the page
-const messageList = document.getElementById("messages");
-const chatForm = document.getElementById("chat-form");
-const questionInput = document.getElementById("question");
-
-
-//adding a message bubble to the chat
-//sender is either "bot" or "user", matching the css classes
-//link is optional: if given, a lichess link is added under the text
-function addMessage(text, sender, link) {
-  const bubble = document.createElement("li"); //make a new <li>
-  bubble.textContent = text;                   //put the text inside it
-  bubble.classList.add("message", sender);     //give it the css classes
-
-  //only add a link if one was passed in
-  if (link !== undefined) {
-    const anchor = document.createElement("a"); //make a new <a> (a link)
-    anchor.href = link;                         //where the link goes
-    anchor.textContent = "Open this position on Lichess";
-    anchor.target = "_blank";                   //open in a new tab
-    anchor.rel = "noopener";                    //safety habit for new-tab links
-    bubble.appendChild(anchor);                 //put the link inside the bubble
-  }
-
-  messageList.appendChild(bubble);             //add it to the list on the page
-  messageList.scrollTop = messageList.scrollHeight; //scroll to the newest message
-}
-
-//listening for the user sending a message-----------------------
-chatForm.addEventListener("submit", function (event) {
-  event.preventDefault(); //stop the page from reloading
-  //console.log("sent!");
-  const question = questionInput.value; //whatever the user typed
-  addMessage(question, "user");         //show it as a user bubble
-  const reply = chessBot.ask(question); //morphy works out the answer
-
-  //if morphy found an opening, build a lichess link for it
-  let link; //starts as undefined
-  if (chessBot.lastOpening !== null) {
-    link = chessBot.lichessLink(chessBot.lastOpening.moves);
-  }
-
-  addMessage(reply, "bot", link);       //show the answer (and link, if any)
-
-  questionInput.value = "";             //clear the box for the next question
-});
-
-//morphy says hello when the page loads
-addMessage(chessBot.introduce(), "bot");
