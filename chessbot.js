@@ -9,6 +9,68 @@ const chessBot = {
   //the family from the most recent answer, used for follow-up questions
   lastFamily: null,
 
+  //small talk topics------------------------------------------------
+  smallTalk: [
+    {
+      topic: "greeting",
+      keywords: ["hi", "hello", "hey", "hiya", "howdy", "yo", "good morning", "good evening"],
+      replies: [
+        "Hello! Ask me about any opening, from the Sicilian to the London.",
+        "Hey there! Which opening are you working on?",
+        "Hi! I'm {name}. Name an opening and I'll show you its main line."
+      ]
+    },
+    {
+      topic: "how are you",
+      keywords: ["how are you", "hows it going", "how are things", "whats up"],
+      replies: [
+        "Ready to play! What opening shall we look at?",
+        "I'm doing well, just reviewing some Ruy Lopez lines. You?",
+        "Feeling sharp, like a Najdorf. What can I explain for you?"
+      ]
+    },
+    {
+      topic: "thanks",
+      keywords: ["thanks", "thank", "thx", "ty", "cheers", "appreciate"],
+      replies: [
+        "Any time! Want to save that one to your wishlist?",
+        "Happy to help. Good luck at the board!",
+        "You're welcome. There are plenty more openings where that came from."
+      ]
+    },
+    {
+      topic: "who are you",
+      keywords: ["who are you", "your name", "whats your name", "who is morphy", "who made you"],
+      replies: [
+        "I'm {name}, a chatbot that knows 106 chess openings. I'm named after Paul Morphy, a 19th-century American who played fast, attacking chess.",
+        "I'm {name}! I explain chess openings: the moves, the ECO code and the big idea behind each one."
+      ]
+    },
+    {
+      topic: "help",
+      keywords: ["help", "what can you do", "how does this work", "what do you know", "what should i ask"],
+      replies: [
+        "Name an opening (\"the French\") or a variation (\"the Najdorf\") and I'll give you the moves and the plan. You can ask for an opening's variations, open any line on Lichess, and save openings to your wishlist."
+      ]
+    },
+    {
+      topic: "players",
+      keywords: ["magnus", "carlsen", "kasparov", "fischer", "best player", "world champion", "grandmaster"],
+      replies: [
+        "Great players, but I'm an openings specialist! Ask me what they play, like the Ruy Lopez or the Najdorf.",
+        "I'll leave the players to the history books. I only know openings, but I know them well."
+      ]
+    },
+    {
+      topic: "goodbye",
+      keywords: ["bye", "goodbye", "see you", "cya", "good night"],
+      replies: [
+        "Bye! Your wishlist will be here when you come back.",
+        "See you! Go play some games with what you've learned."
+      ]
+    }
+  ],
+
   //methods----------------------------------------------
   introduce() {
     return "Hi! I'm " + this.name + ", here to answer your questions about chess openings!";
@@ -142,6 +204,12 @@ const chessBot = {
     }
 
     return picked;
+  },
+
+  //finding the matching small talk topic----------------------------
+  //uses findBest from piece 1, just with a different list
+  findSmallTalk(question) {
+    return this.findBest(this.smallTalk, question);
   },
   //a while loop is a for loop without the counting: it keeps going as
   //long as its condition is true. here: "fewer than count picked AND
