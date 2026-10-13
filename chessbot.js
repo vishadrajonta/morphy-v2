@@ -42,62 +42,111 @@ const chessBot = {
   },
 
   //-----------------------------------------------------------
-  //finding the match based on keywords----------------------
+  //finding the best-scoring item in any list------------------------
+  //items: any array of objects that each have a keywords array
+  //(opening families, variations, small talk topics...)
+  findBest(items, question) {
+    //clean the question, then break it into an array of words
+    const cleaned = this.normalize(question);
+    const words = cleaned.split(" ");
+
+    //tracking the winner, OUTSIDE the loop so it's remembered
+    let best = null;  //nothing found yet
+    let bestScore = 0;
+
+    for (let item of items) {
+      const score = this.scoreKeywords(item.keywords, cleaned, words);
+
+      //uses > so on a tie, the earlier item stays the winner
+      if (score > bestScore) {
+        bestScore = score;
+        best = item;
+      }
+    }
+
+    //the winning item, or null if nothing scored above 0
+    return best;
+  },
+
+  //finding the matching opening family (now just one line)
   findMatch(question) {
-    //clean the question, then break it into an array of words
-    const cleaned = this.normalize(question);
-    const words = cleaned.split(" ");
-
-    //tracking the winner---------------------------------------
-    //these live OUTSIDE the loop so they remember across all cards
-    let bestEntry = null; //no best card yet
-    let bestScore = 0;    //nothing has scored yet
-
-    //going through each card-----------------------------------
-    for (let entry of this.knowledge) {
-      //the helper does all the keyword checking now
-      const score = this.scoreKeywords(entry.keywords, cleaned, words);
-
-      //checking if this card beats the best so far
-      //uses > so on a tie, the earlier card stays the winner
-      if (score > bestScore) {
-        bestScore = score;
-        bestEntry = entry;
-      }
-    }
-
-    //hand back the winning card (or null if nothing matched)
-    return bestEntry;
+    return this.findBest(this.knowledge, question);
   },
-  //-----------------------------------------------------------
 
-
-
-  //finding the matching variation inside a family------------------
+  //finding the matching variation inside a family (also one line)
   findVariation(family, question) {
-    //clean the question, then break it into an array of words
-    const cleaned = this.normalize(question);
-    const words = cleaned.split(" ");
-
-    //tracking the winner---------------------------------------
-    let bestVariation = null; //no best card yet
-    let bestScore = 0;    //nothing has scored yet
-
-    //going through each variation-----------------------------------
-    for (let variation of family.variations) {
-      //the helper does all the keyword checking now
-      const score = this.scoreKeywords(variation.keywords, cleaned, words);
-
-      //checking if this variation beats the best so far
-      //uses > so on a tie, the earlier card stays the winner
-      if (score > bestScore) {
-        bestScore = score;
-        bestVariation = variation;
-      }
-    }
-    //hand back the winning variation (or null if nothing matched)
-    return bestVariation;
+    return this.findBest(family.variations, question);
   },
+
+
+  //working out exactly which opening a question is about------------
+  //this is the family + variation + title logic that used to sit in
+  //the middle of ask. it moves into its own method because TWO things
+  //need it now: answering a question, and adding to the wishlist
+  //(where "najdorf" has to become "Sicilian Defense: Najdorf Variation")
+  //
+  //returns an object with three properties, or null if nothing matched:
+  //  family  - the family card
+  //  opening - the card to talk about (the variation if one matched,
+  //            otherwise the family itself)
+  //  title   - the full display name
+  lookup(question) {
+    const family = this.findMatch(question);
+
+    if (family === null) {
+      return null; //not an opening morphy knows
+    }
+
+    const variation = this.findVariation(family, question);
+
+    //no specific variation, so we're talking about the family
+    if (variation === null) {
+      return {
+        family: family,
+        opening: family,
+        title: family.name
+      };
+    }
+
+    //a variation matched
+    return {
+      family: family,
+      opening: variation,
+      title: family.name + ": " + variation.name
+    };
+  },
+  //returning an object like { family: ..., opening: ..., title: ... }
+  //is how a method hands back SEVERAL values at once. you build the
+  //object right there in the return, the same way you write knowledge
+  //cards, and whoever calls lookup reads found.title, found.opening etc.
+
+
+  //picking a few random items from an array-------------------------
+  //pickRandom(["a", "b", "c", "d"], 2) might give ["c", "a"]
+  //used for small talk replies and for suggestion chips
+  pickRandom(items, count) {
+    const pool = items.slice(); //.slice() with nothing inside makes a COPY,
+                                //so we never damage the original array
+    const picked = [];
+
+    //keep picking until we have enough, or the pool runs out
+    while (picked.length < count && pool.length > 0) {
+      //a random position in the pool: the same Math.random trick as
+      //your random pattern homework, scaled up to the pool's length
+      const index = Math.floor(Math.random() * pool.length);
+
+      //.splice(index, 1) cuts ONE item out of the pool at that position
+      //and hands it back inside an array, so [0] gets the item itself.
+      //cutting it out means the same item can't be picked twice
+      picked.push(pool.splice(index, 1)[0]);
+    }
+
+    return picked;
+  },
+  //a while loop is a for loop without the counting: it keeps going as
+  //long as its condition is true. here: "fewer than count picked AND
+  //something still left to pick from"
+//-----------------------------------------------------------------
 
 
   //answering the user-------------------------------------------
